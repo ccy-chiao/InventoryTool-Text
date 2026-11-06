@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>庫存清單修改小工具</title>
+<style>
+:root{--bg:#fff;--fg:#111;--mut:#666;--card:#f2f2f2;--line:#111;--red:#e02020;--grn:#1a7f37;--blue:#1565c0;--hl:#fff3b0;--hlf:#111;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1a1a;--fg:#f2f2f2;--mut:#aaa;--card:#2a2a2a;--line:#f2f2f2;--red:#ff5c5c;--grn:#4cc36b;--blue:#6ab0ff;--hl:#5a4d00;--hlf:#fff}}
+*{box-sizing:border-box}
+body{margin:0 auto;background:var(--bg);color:var(--fg);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:22px;line-height:1.4;padding:16px;max-width:760px}
+h1{font-size:26px;margin:8px 0 10px}
+textarea{width:100%;height:150px;font:inherit;padding:12px;border:3px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg)}
+button,select{font:inherit;cursor:pointer;border-radius:10px;border:3px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px}
+.big{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:700;width:100%;margin:12px 0}
+.wide{width:100%;margin-top:10px}
+.sec{font-weight:700;font-size:24px;background:var(--card);padding:8px 12px;border-radius:8px;margin-top:18px}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:2px solid var(--card);flex-wrap:wrap}
+.del{width:50px;height:50px;padding:0;border:4px solid var(--red);background:var(--bg);font-size:24px;flex:none}
+.seg{flex:1;min-width:140px;font-weight:700;display:flex;flex-wrap:wrap;align-items:center;gap:4px;word-break:break-all}
+.seg span{white-space:pre-wrap}
+input{height:50px;font:inherit;font-size:24px;text-align:center;border:4px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);padding:0 4px}
+select{height:58px;font-size:22px;border-width:4px;padding:0 12px;line-height:normal;min-width:6em}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ctl input{width:92px}
+.ok{background:var(--grn);color:#fff;border-color:var(--grn);font-weight:700;font-size:20px;display:none;flex-basis:100%}
+.ok.show{display:block}
+.tag{font-size:15px;font-weight:400;color:#8a4b00;background:#ffd9a0;border-radius:6px;padding:0 6px}
+.calc{padding:10px 0;border-bottom:2px solid var(--card)}
+.calc .ln{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.qty{font-weight:700;font-size:26px}
+.mvb{width:56px;height:50px;padding:0}
+.copy{background:var(--grn);color:#fff;border-color:var(--grn);font-weight:700;width:100%;margin:20px 0}
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:16px;z-index:9}
+.mask.show{display:flex}
+.box{background:var(--bg);border:3px solid var(--line);border-radius:14px;padding:18px;max-width:480px;width:100%;max-height:90vh;display:flex;flex-direction:column}
+.x{align-self:flex-end;padding:0 14px;font-size:26px;margin-bottom:6px;flex:none}
+.pv{flex:1;min-height:120px;overflow:auto;border:2px solid var(--line);border-radius:8px;padding:8px;margin-top:10px;white-space:pre-wrap;font-size:20px;scrollbar-width:auto}
+.pv::-webkit-scrollbar{width:20px}.pv::-webkit-scrollbar-thumb{background:var(--mut);border-radius:10px}.pv::-webkit-scrollbar-track{background:var(--card)}
+.pv div{padding:1px 4px;min-height:1.4em}.pv .c{background:var(--hl);color:var(--hlf);font-weight:700}
+.b{display:flex;gap:10px;margin-top:14px;flex-direction:column}
+.toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#111;color:#fff;padding:14px 24px;border-radius:30px;display:none;z-index:10}
+.toast.show{display:block}
+.note{color:var(--mut);font-size:18px}
+</style>
+</head>
+<body>
+<h1>📋 清單修改小工具</h1>
+<p class="note">1. 把清單貼在下面　2. 按「分析清單」</p>
+<textarea id="src" placeholder="在這裡貼上清單"></textarea>
+<button class="big" id="go">分析清單</button>
+<button id="clr" style="width:100%;margin-bottom:6px">🧹 清空貼上的內容</button>
+<div id="area" style="display:none">
+  <p class="note">要改的地方在右邊框裡填新的（不改就留空），再按綠色「按下後立即修改」　紅框＝刪除　黃底＝和原本不同</p>
+  <div id="list"></div>
+  <div id="addbox" style="display:none;margin-top:12px">
+    <textarea id="addt" placeholder="輸入要新增的內容，例如：&#10;貢丸、蝦捲20斤&#10;周四不進貨"></textarea>
+    <button class="ok show" id="addok" style="width:100%;margin-top:8px">確認新增</button>
+    <button class="wide" id="addno">取消</button>
+  </div>
+  <button class="wide" id="addb">＋ 新增清單項目</button>
+  <button class="wide" id="ordb">↕ 調整清單順序</button>
+  <button class="copy" id="copy">📄 複製整份目前清單</button>
+</div>
+<div class="mask" id="mask"><div class="box" id="box"></div></div>
+<div class="toast" id="toast">已複製！可以貼上了</div>
+<script>
+var L=[],reorder=false;
+function $(i){return document.getElementById(i)}
+function h(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+function nn(s){s=String(s).replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-65248)}).replace(/，/g,',').replace(/．/g,'.');
+  if(/^\d{1,3}(,\d{3})+$/.test(s))return s.replace(/,/g,'');return s.replace(/,/g,'.')}
+function val(v){v=nn(v.trim());return /^\d+(\.\d+)?$/.test(v)?v:null}
+var SEP=/([，、；;]|,(?!\d))/,TK=/(\d+(?:[.,，．]\d+)*)|([週周])([一二三四五六日天])/g;
+function toks(s){var r=[],i=0,m;TK.lastIndex=0;
+  while((m=TK.exec(s))){if(m.index>i)r.push({t:'txt',s:s.slice(i,m.index)});
+    if(m[1]!==undefined){var v=nn(m[1]);r.push({t:'num',v:v,fix:v!==m[1]&&v.indexOf('.')>=0})}
+    else{r.push({t:'txt',s:m[2]});r.push({t:'wd',v:m[3]})}
+    i=TK.lastIndex}
+  if(i<s.length)r.push({t:'txt',s:s.slice(i)});return r}
+function segs(line){var p=line.split(SEP),o=[],carry='';
+  for(var i=0;i<p.length;i+=2){var t=carry+p[i],sep=p[i+1]||'',tk=toks(t);
+    var has=tk.some(function(k){return k.t!=='txt'});
+    if(!has&&i+2<p.length){carry=t+sep;continue}
+    o.push({tk:tk,sep:sep});carry=''}
+  return o}
+function st(s){return s.tk.map(function(k){return k.t==='txt'?k.s:k.v}).join('')}
+function out(x){if(x.type!=='item')return x.text;var n=x.segs.length;return x.segs.map(function(s,i){return st(s)+(i<n-1?s.sep:'')}).join('')}
+function build(){return L.map(out).join('\n')}
+function parse(t){return t.replace(/\r/g,'').replace(/＝/g,'=').split('\n').map(function(l,i){l=l.replace(/\s+$/,'');var o={orig:l,text:l,oi:i},m;
+  if(!l.trim()){o.type='blank';return o}
+  m=l.match(/^(.*)=\s*(\d[\d.,，．]*)$/);
+  if(m){o.type='calc';o.name=m[1].replace(/[\d\s.,，+\-－−]+$/,'');o.res=nn(m[2]);return o}
+  if(/[:：]$/.test(l.trim())){o.type='head';return o}
+  o.type='item';o.segs=segs(l);return o})}
+function close(){$('mask').classList.remove('show')}
+function modal(node,yesT,noT,yes,cls){var b=$('box');b.innerHTML='';var xb=h('button','x','✕');xb.setAttribute('aria-label','關閉');xb.onclick=close;b.append(xb,node);
+  var d=h('div','b');var y=h('button','',yesT);y.style.cssText='font-weight:700;background:'+cls+';color:#fff;border-color:'+cls;
+  var n=h('button','',noT);n.onclick=close;y.onclick=function(){close();yes()};d.append(y,n);b.append(d);$('mask').classList.add('show')}
+function bold(t){var p=h('div','',null);p.style.fontWeight='700';p.textContent=t;return p}
+function askDel(name,fn){modal(bold('確認刪除「'+name+'」這項目嗎？'),'確定刪除','取消',fn,'var(--red)')}
+function delBtn(name,fn){var d=h('button','del','🗑');d.setAttribute('aria-label','刪除');d.onclick=function(){askDel(name,fn)};return d}
+function mv(i,d){var j=i+d;while(j>=0&&j<L.length&&L[j].type==='blank')j+=d;if(j<0||j>=L.length)return;var t=L[i];L[i]=L[j];L[j]=t;render()}
+function render(){var box=$('list');box.innerHTML='';
+  $('ordb').textContent=reorder?'✅ 完成調整順序':'↕ 調整清單順序';
+  if(reorder){L.forEach(function(x,i){if(x.type==='blank')return;
+    var r=h('div','row'),t=h('div','seg',null);t.append(h('span','',out(x)));if(x.type==='head')t.style.background='var(--card)';
+    var u=h('button','mvb','▲'),d=h('button','mvb','▼');u.onclick=function(){mv(i,-1)};d.onclick=function(){mv(i,1)};
+    r.append(u,d,t);box.append(r)});return}
+  L.forEach(function(x){
+    if(x.type==='head'){box.append(h('div','sec',x.text.trim()))}
+    else if(x.type==='calc'){
+      var c=h('div','calc'),top=h('div','row');top.style.cssText='border:0;padding:0';
+      top.append(delBtn(x.name.replace(/[:：\s]+$/,'')||'計算',function(){L.splice(L.indexOf(x),1);render()}),h('div','seg',x.text));c.append(top);
+      var base=h('input');base.style.width='120px';base.inputMode='decimal';base.value=x.base||'';base.placeholder='數字';
+      var again=h('button','','點此帶入上次最後值 '+x.res);
+      var l1=h('div','ln');l1.append(base,again);var ops=h('div','ln');
+      [['+','＋ 加'],['-','－ 減']].forEach(function(p){var lb=h('label','');lb.style.cssText='font-weight:700;padding:6px 12px;border:3px solid var(--line);border-radius:10px';
+        var rd=h('input');rd.type='radio';rd.name='op'+L.indexOf(x);rd.style.cssText='width:24px;height:24px;vertical-align:middle;margin-right:6px';rd.checked=x.op===p[0];
+        rd.onchange=function(){x.op=p[0];upd()};lb.append(rd,p[1]);ops.append(lb)});
+      var amt=h('input');amt.inputMode='decimal';amt.value=x.amt||'';amt.style.width='120px';
+      var l3=h('div','ln');l3.append(amt);var ok=h('button','ok','按下後進行修改');
+      function upd(){x.base=base.value;x.amt=amt.value;again.style.display=base.value.trim()!==x.res?'block':'none';l3.style.display=x.op?'flex':'none';
+        var a=val(base.value),b=val(amt.value);x.pending=null;if(a!==null&&b!==null&&x.op)x.pending=Math.round((x.op==='-'?a-b:+a+ +b)*100)/100;ok.classList.toggle('show',x.pending!==null)}
+      again.onclick=function(){base.value=x.res;upd()};base.oninput=amt.oninput=upd;
+      ok.onclick=function(){var a=val(base.value),b=val(amt.value),t=x.name+a+x.op+b+'='+x.pending;
+        var p=bold('是否修改「'+x.name.replace(/[:：\s]+$/,'')+'」？');p.append(h('br'),h('span','qty',a+x.op+b+'='+x.pending));
+        modal(p,'確認修改','取消',function(){x.text=t;x.res=String(x.pending);x.base='';x.amt='';x.op='';render()},'var(--grn)')};
+      c.append(l1,ops,l3,ok);box.append(c);upd()}
+    else if(x.type==='item'){x.segs.forEach(function(s){
+      var r=h('div','row'),sg=h('div','seg',st(s)),ctl=[],ed=s.tk.filter(function(k){return k.t!=='txt'}),bare=!ed.length&&!/[:：.]/.test(st(s)),cs=h('div','ctl'),ne=null,fx=false;
+      sg.style.whiteSpace='pre-wrap';
+      ed.forEach(function(k){var e;if(k.fix)fx=true;
+        if(k.t==='num'){e=h('input');e.inputMode='decimal';e.value=k.d||'';if(ed.length>1)e.placeholder=k.v;e.oninput=function(){k.d=e.value;chk()};e.setAttribute('aria-label','新數字（可不填）')}
+        else{e=h('select');e.append(new Option('不改',''));['一','二','三','四','五','六','日','天'].forEach(function(d){if(d!=='天'||k.v==='天')e.append(new Option(d,d))});e.value=k.d||'';e.onchange=function(){k.d=e.value;chk()}}
+        ctl.push({k:k,e:e});cs.append(e)});
+      if(bare){ne=h('input');ne.inputMode='decimal';ne.placeholder='補數字';ne.value=s.nd||'';ne.oninput=function(){s.nd=ne.value;chk()};cs.append(ne)}
+      if(fx)sg.append(h('span','tag','逗號已改成小數點'));
+      var ok=h('button','ok','按下後立即修改');
+      function gv(c){var t=c.e.value.trim();if(t==='')return undefined;return c.k.t==='num'?val(t):t}
+      function chk(){var good=true,chg=false;ctl.forEach(function(c){var v=gv(c);if(v===undefined)return;if(v===null)good=false;else if(v!==c.k.v)chg=true});
+        if(ne&&ne.value.trim()){if(val(ne.value)===null)good=false;else chg=true}ok.classList.toggle('show',good&&chg)}
+      ok.onclick=function(){ctl.forEach(function(c){var v=gv(c);if(v!==undefined&&v!==null){c.k.v=v;c.k.fix=false}delete c.k.d});
+        if(ne&&val(ne.value)!==null)s.tk.push({t:'txt',s:' '},{t:'num',v:val(ne.value)});delete s.nd;render()};
+      r.append(delBtn(st(s).trim(),function(){x.segs.splice(x.segs.indexOf(s),1);if(!x.segs.length)L.splice(L.indexOf(x),1);render()}),sg,cs,ok);box.append(r);chk()})}
+    else if(x.type==='item-old'){x.segs.forEach(function(s){
+      var r=h('div','row'),sg=h('div','seg'),ctl=[],fx=false;
+      s.tk.forEach(function(k){
+        if(k.t==='txt'){sg.append(h('span','',k.s));return}
+        var e;
+        if(k.t==='num'){e=h('input');e.inputMode='decimal';e.value=k.d!==undefined?k.d:k.v;e.style.width=Math.max(3.4,e.value.length+1.8)+'ch';if(k.fix)fx=true;
+          e.oninput=function(){k.d=e.value;e.style.width=Math.max(3.4,e.value.length+1.8)+'ch';chk()}}
+        else{e=h('select');['一','二','三','四','五','六','日','天'].forEach(function(d){if(d!=='天'||k.v==='天')e.append(new Option(d,d))});e.value=k.d!==undefined?k.d:k.v;e.onchange=function(){k.d=e.value;chk()}}
+        ctl.push({k:k,e:e});sg.append(e)});
+      if(fx)sg.append(h('span','tag','逗號已改成小數點'));
+      var ok=h('button','ok','按下後立即修改');
+      function g(c){return c.k.t==='num'?val(c.e.value):c.e.value}
+      function chk(){var good=true,chg=false;ctl.forEach(function(c){var v=g(c);if(v===null)good=false;else if(v!==c.k.v)chg=true});ok.classList.toggle('show',good&&chg)}
+      ok.onclick=function(){ctl.forEach(function(c){c.k.v=g(c);c.k.fix=false;delete c.k.d});render()};
+      r.append(delBtn(st(s).trim(),function(){x.segs.splice(x.segs.indexOf(s),1);if(!x.segs.length)L.splice(L.indexOf(x),1);render()}),sg,ok);box.append(r);chk()})}
+  })}
+$('go').onclick=function(){L=parse($('src').value);reorder=false;
+  if(!L.some(function(x){return x.type!=='blank'})){alert('找不到內容，請再貼一次');return}
+  $('area').style.display='block';render()};
+$('clr').onclick=function(){
+  function wipe(){$('src').value='';L=[];reorder=false;$('list').innerHTML='';$('area').style.display='none';$('addbox').style.display='none';$('src').focus()}
+  if(L.length)modal(bold('確定要清空嗎？目前的內容和修改都會消失。'),'確定清空','取消',wipe,'var(--red)');else wipe()};
+$('addb').onclick=function(){$('addbox').style.display='block';$('addb').style.display='none';$('addt').focus()};
+$('addno').onclick=function(){$('addbox').style.display='none';$('addb').style.display='block';$('addt').value=''};
+$('addok').onclick=function(){var t=$('addt').value.replace(/\s+$/,'');if(!t.trim())return;
+  while(L.length&&L[L.length-1].type==='blank')L.pop();
+  parse(t).forEach(function(x){x.isNew=true;L.push(x)});$('addt').value='';$('addbox').style.display='none';$('addb').style.display='block';render()};
+$('ordb').onclick=function(){reorder=!reorder;render()};
+function toast(){var o=$('toast');o.classList.add('show');setTimeout(function(){o.classList.remove('show')},2000)}
+function manual(s){var w=h('div'),a=h('textarea');a.value=s;a.readOnly=true;a.style.height='220px';
+  w.append(bold('自動複製沒成功，請在下面框內：長按→全選→複製'),a);modal(w,'關閉','取消',function(){},'var(--blue)');setTimeout(function(){a.focus();a.select()},50)}
+function doCopy(){var s=build(),ok=false,a=document.createElement('textarea');
+  a.value=s;a.setAttribute('readonly','');a.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(a);a.select();a.setSelectionRange(0,s.length);
+  try{ok=document.execCommand('copy')}catch(e){}a.remove();
+  if(ok){toast();return}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).then(toast,function(){manual(s)});else manual(s)}
+$('copy').onclick=function(){reorder=false;render();
+  var wrap=h('div'),t=bold('貼上後會長這樣，請確認（黃底＝和原本不同）：');wrap.append(t);
+  var sv=L.filter(function(x){return !x.isNew}),ex=sv.slice().sort(function(a,b){return a.oi-b.oi}),mvd=[];sv.forEach(function(x,i){if(x!==ex[i]&&x.type!=='blank')mvd.push(x)});
+  var pv=h('div','pv');L.forEach(function(x){var o=out(x);pv.append(h('div',(o!==x.orig||x.isNew||mvd.indexOf(x)>=0)?'c':'',o||' '))});
+  wrap.style.cssText='display:flex;flex-direction:column;min-height:0;flex:1';
+  var ar=h('div','');ar.style.cssText='display:flex;gap:10px;margin-top:8px';
+  [['▲ 往上',-200],['▼ 往下',200]].forEach(function(a){var bt=h('button','',a[0]);bt.style.flex='1';bt.onclick=function(){pv.scrollBy({top:a[1],behavior:'smooth'})};ar.append(bt)});
+  wrap.append(pv,ar);
+  modal(wrap,'✅ 內容正確，進行複製','✏️ 內容有誤，再次進行編輯',doCopy,'var(--grn)')};
+</script>
+</body>
+</html>
